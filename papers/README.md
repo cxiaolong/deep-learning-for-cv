@@ -27,6 +27,7 @@
 
 ## Detection
 - R-CNN https://arxiv.org/abs/1311.2524
+- Overfeat https://arxiv.org/abs/1312.6229
 - Fast R-CNN https://arxiv.org/abs/1504.08083
 - Faster R-CNN https://arxiv.org/abs/1506.01497
 - Mask R-CNN https://arxiv.org/abs/1703.06870
