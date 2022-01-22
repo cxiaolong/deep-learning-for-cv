@@ -99,9 +99,9 @@ def train_with_gpu(model):
     ################################### plot loss and accuracy ##################################
     history_dict = history.history
     train_loss = history_dict.get('loss')
-    train_accuracy = history_dict.get('accuracy')
+    train_accuracy = history_dict.get('categorical_accuracy')
     val_loss = history_dict.get('val_loss')
-    val_accuracy = history_dict.get('val_accuracy')
+    val_accuracy = history_dict.get('val_categorical_accuracy')
 
     # figure loss
     plt.figure()
