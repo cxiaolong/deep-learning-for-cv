@@ -19,7 +19,7 @@ def train_with_low_api(model):
 
     # definite train params
     im_height = 224
-    im_weight = 224
+    im_width = 224
     batch_size = 64
     epochs = 10
 
@@ -29,12 +29,12 @@ def train_with_low_api(model):
     val_image_generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1 / 255.)
 
     train_data_gen = train_image_generator.flow_from_directory(directory=train_dir,
-                                                               target_size=(im_height, im_weight),
+                                                               target_size=(im_height, im_width),
                                                                batch_size=batch_size,
                                                                shuffle=True,
                                                                class_mode='categorical')
     val_data_gen = val_image_generator.flow_from_directory(directory=val_dir,
-                                                           target_size=(im_height, im_weight),
+                                                           target_size=(im_height, im_width),
                                                            batch_size=batch_size,
                                                            shuffle=False,
                                                            class_mode='categorical')

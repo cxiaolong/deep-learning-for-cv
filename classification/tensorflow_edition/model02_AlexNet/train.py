@@ -1,13 +1,15 @@
-import os, json
-import tensorflow as tf
+import json
+import os
+
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from model import AlexNet_v1, AlexNet_v2
 
 
 def train(model):
     ################################# prepare data ######################################
-    data_root = "~/data/"  # get data root path
+    data_root = "/Users/cxl/data/"  # get data root path
     image_path = os.path.join(data_root, "flower_data")  # get flower dataset path
     train_dir = os.path.join(image_path, "train/")
     val_dir = os.path.join(image_path, "val/")
@@ -20,7 +22,7 @@ def train(model):
 
     # definite train params
     im_height = 224
-    im_weight = 224
+    im_width = 224
     batch_size = 64
     epochs = 10
 
@@ -30,12 +32,12 @@ def train(model):
     val_image_generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1 / 255.)
 
     train_data_gen = train_image_generator.flow_from_directory(directory=train_dir,
-                                                               target_size=(im_height, im_weight),
+                                                               target_size=(im_height, im_width),
                                                                batch_size=batch_size,
                                                                shuffle=True,
                                                                class_mode='categorical')
     val_data_gen = val_image_generator.flow_from_directory(directory=val_dir,
-                                                           target_size=(im_height, im_weight),
+                                                           target_size=(im_height, im_width),
                                                            batch_size=batch_size,
                                                            shuffle=False,
                                                            class_mode='categorical')
@@ -59,13 +61,13 @@ def train(model):
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005),
                   loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
                   metrics=["accuracy"])
-    callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath='./save_weights/myAlexNet.h5',
-                                                    save_best_only=True,
-                                                    save_weights_only=True,
-                                                    monitor='val_loss')]
+    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath='./save_weights/myAlexNet.h5',
+                                                          save_best_only=True,
+                                                          save_weights_only=True,
+                                                          monitor='val_loss')
     history = model.fit(x=train_data_gen,
                         epochs=epochs,
-                        callbacks=callbacks,
+                        callbacks=[model_checkpoint],
                         validation_data=val_data_gen,
                         steps_per_epoch=total_train // batch_size,
                         validation_steps=total_val // batch_size)
@@ -92,11 +94,11 @@ def train(model):
     plt.legend()
     plt.xlabel('epochs')
     plt.ylabel('loss')
-
+    plt.show()
 
 
 if __name__ == '__main__':
     model1 = AlexNet_v1(num_classes=5)
     model2 = AlexNet_v2(num_classes=5)
-    model2.build()
-    train(model1)
+    model2.build(input_shape=(64, 224, 224, 3))
+    train(model2)
