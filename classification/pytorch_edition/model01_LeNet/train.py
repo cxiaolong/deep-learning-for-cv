@@ -55,7 +55,7 @@ def train():
                         epoch + 1, step + 1, running_loss / 500, accuracy)])
                     running_loss = 0.0
 
-    save_path = './LeNet.pth'
+    save_path = 'LeNet.pth'
     torch.save(net.state_dict(), save_path)
 
 
