@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
-import os, json, glob
+import os, json, glob, time
 
 from model import AlexNet_v1, AlexNet_v2
 
@@ -54,7 +54,7 @@ def train_with_gpu(model):
     im_height = 224
     im_width = 224
     batch_size = 64
-    epochs = 100
+    epochs = 10
     learning_rate = 0.0005
 
     def process_path(img_path, label):
@@ -81,45 +81,103 @@ def train_with_gpu(model):
 
     #################################### start training ######################################
     model.summary()
-    # high level api learning
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                  loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
-                  metrics=tf.keras.metrics.CategoricalAccuracy())
-    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath='./save_weights/myAlexNet.h5',
-                                                          save_best_only=True,
-                                                          save_weights_only=True,
-                                                          monitor='val_loss')
-    history = model.fit(x=train_dataset,
-                        epochs=epochs,
-                        callbacks=[model_checkpoint],
-                        validation_data=val_dataset,
-                        steps_per_epoch=train_num // batch_size,
-                        validation_steps=val_num // batch_size)
+    # # using keras high level api learning
+    # model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+    #               loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
+    #               metrics=tf.keras.metrics.CategoricalAccuracy())
+    # model_checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath='./save_weights/myAlexNet.h5',
+    #                                                       save_best_only=True,
+    #                                                       save_weights_only=True,
+    #                                                       monitor='val_loss')
+    # history = model.fit(x=train_dataset,
+    #                     epochs=epochs,
+    #                     callbacks=[model_checkpoint],
+    #                     validation_data=val_dataset,
+    #                     steps_per_epoch=train_num // batch_size,
+    #                     validation_steps=val_num // batch_size)
 
     ################################### plot loss and accuracy ##################################
-    history_dict = history.history
-    train_loss = history_dict.get('loss')
-    train_accuracy = history_dict.get('categorical_accuracy')
-    val_loss = history_dict.get('val_loss')
-    val_accuracy = history_dict.get('val_categorical_accuracy')
-
+    # history_dict = history.history
+    # train_loss = history_dict.get('loss')
+    # train_accuracy = history_dict.get('categorical_accuracy')
+    # val_loss = history_dict.get('val_loss')
+    # val_accuracy = history_dict.get('val_categorical_accuracy')
+    #
     # figure loss
-    plt.figure()
-    plt.plot(range(epochs), train_loss, label='train_loss')
-    plt.plot(range(epochs), val_loss, label='val_loss')
-    plt.legend()
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
+    # plt.figure()
+    # plt.plot(range(epochs), train_loss, label='train_loss')
+    # plt.plot(range(epochs), val_loss, label='val_loss')
+    # plt.legend()
+    # plt.xlabel('epochs')
+    # plt.ylabel('loss')
+    #
+    # # figure accuracy
+    # plt.figure()
+    # plt.plot(range(epochs), train_accuracy, label='train_accuracy')
+    # plt.plot(range(epochs), val_accuracy, label='val_accuracy')
+    # plt.legend()
+    # plt.xlabel('epochs')
+    # plt.ylabel('loss')
+    # plt.show()
 
-    # figure accuracy
-    plt.figure()
-    plt.plot(range(epochs), train_accuracy, label='train_accuracy')
-    plt.plot(range(epochs), val_accuracy, label='val_accuracy')
-    plt.legend()
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.show()
+    ############################### using keras low api for training ##############################
+    loss_obj = tf.keras.losses.CategoricalCrossentropy()
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
+    train_loss = tf.keras.metrics.Mean(name="train_loss")
+    train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
+
+    val_loss = tf.keras.metrics.Mean(name="val_loss")
+    val_accuracy = tf.keras.metrics.CategoricalAccuracy(name="val_accuracy")
+
+    @tf.function
+    def train_step(images, labels):
+        with tf.GradientTape() as tape:
+            predictions = model(images, training=True)
+            loss = loss_obj(y_true=labels, y_pred=predictions)
+        gradients = tape.gradient(target=loss, sources=model.trainable_variables)
+        optimizer.apply_gradients(grads_and_vars=zip(gradients, model.trainable_variables))
+
+        train_loss(loss)
+        train_accuracy(labels, predictions)
+
+    @tf.function
+    def test_step(images, labels):
+        prediction = model(images, training=False)
+        loss = loss_obj(y_true=labels, y_pred=prediction)
+
+        val_loss(loss)
+        val_accuracy(labels, prediction)
+
+    train_step_num = train_num // batch_size
+    val_step_num = val_num // batch_size
+
+    for epoch in range(1, epochs+1):
+        # clear history info
+        train_loss.reset_states()
+        train_accuracy.reset_states()
+        val_loss.reset_states()
+        val_accuracy.reset_states()
+
+        t1 = time.perf_counter()
+        for index, (images, labels) in enumerate(train_dataset):
+            train_step(images, labels)
+            if index+1 == train_step_num:
+                break
+        delta_t = time.perf_counter() - t1
+
+        for index, (images, labels) in enumerate(val_dataset):
+            test_step(images, labels)
+            if index + 1 == val_step_num:
+                break
+
+        template = 'Epoch {}, Time {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
+        print(template.format(epoch,
+                              delta_t,
+                              train_loss.result(),
+                              train_accuracy.result() * 100,
+                              val_loss.result(),
+                              val_accuracy.result() * 100))
 
 
 if __name__ == '__main__':
